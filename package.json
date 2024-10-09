@@ -1,0 +1,39 @@
+{
+  "name": "rtn-smartconfig",
+  "version": "0.0.1",
+  "description": "Add numbers with Turbo Native Modules",
+  "react-native": "js/index",
+  "source": "js/index",
+  "files": [
+    "js",
+    "android",
+    "ios",
+    "rtn-smartconfig.podspec",
+    "!android/build",
+    "!ios/build",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__"
+  ],
+  "keywords": ["react-native", "ios", "android"],
+  "repository": "https://github.com/Ekkaterinka/rtn-smartconfig",
+  "author": "Ekaterina https://github.com/Ekkaterinka",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Ekkaterinka/rtn-smartconfig/issues"
+  },
+  "homepage": "https://github.com/Ekkaterinka/rtn-smartconfig#readme",
+  "devDependencies": {},
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "RTNSmartconfigSpec",
+    "type": "modules",
+    "jsSrcsDir": "js",
+    "android": {
+      "javaPackageName": "com.rtnsmartconfig"
+    }
+  }
+}
