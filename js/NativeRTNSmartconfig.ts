@@ -8,13 +8,13 @@ export interface Spec extends TurboModule {
       failCallback: (error: string) => void
   ): void;
 
-  // getConnectedInfo(successCallback: (result: {
-  //   ip: string,
-  //   is5G: boolean,
-  //   ssid: string,
-  //   bssid: string,
-  //   state: string
-  // }) => void, failCallback: (error: string) => void): void;
+  getConnectedInfo(successCallback: (result: {
+    ip: string,
+    is5G: boolean,
+    ssid: string,
+    bssid: string,
+    state: string
+  }) => void, failCallback: (error: string) => void): void;
   //
   // scan(options: any, successCallback: (success: string) => void, failCallbackfailCallback: (error: string) => void): void,
   //

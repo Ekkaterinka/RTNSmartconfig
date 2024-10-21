@@ -7,30 +7,30 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.SupplicantState;
 import android.os.Build;
 
-
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.facebook.common.logging.FLog;
 import com.facebook.react.bridge.Callback;
-import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
-import com.facebook.react.ReactActivity;
 
-import java.util.Map;
-import java.util.HashMap;
+import com.espressif.iot.esptouch.util.TouchNetUtil;
+
+import java.net.InetAddress;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 import com.rtnsmartconfig.NativeRTNSmartconfigSpec;
 
 public class SmartconfigModule extends NativeRTNSmartconfigSpec implements PermissionListener{
@@ -42,7 +42,6 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     Callback mErrorCallback;
 
     private PermissionListener permissionListener;
-    private WifiManager mWifiManager;
     private static final int REQUEST_LOCATION = 1503;
     private final String permission = Manifest.permission.ACCESS_FINE_LOCATION;
     AlertDialog alertDialog = null;
@@ -146,5 +145,44 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
                             + " implement PermissionAwareActivity.");
         }
         return (PermissionAwareActivity) activity;
+    }
+
+    public void getConnectedInfo(Callback successCallback, Callback errorCallback) {
+        final WritableMap result = new WritableNativeMap();
+
+        WifiManager mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+        try {
+            if (!TouchNetUtil.isWifiConnected(wifiInfo)) {
+                result.putString("state", "NotConnected");
+                errorCallback.invoke(result);
+                return;
+            }
+            if (!wifiInfo.getSupplicantState().equals(SupplicantState.COMPLETED)) {
+                result.putString("state", "Connecting");
+                errorCallback.invoke(result);
+                return;
+            }
+            String ssid = TouchNetUtil.getSsidString(wifiInfo);
+            InetAddress ip;
+            int ipValue = wifiInfo.getIpAddress();
+            if (ipValue != 0) {
+                ip = TouchNetUtil.getAddress(wifiInfo.getIpAddress());
+            } else {
+                ip = TouchNetUtil.getIPv4Address();
+                if (ip == null) {
+                    ip = TouchNetUtil.getIPv6Address();
+                }
+            }
+            String ipAddress = ip.getHostAddress();
+            result.putString("ip", ipAddress);
+            result.putBoolean("is5G", TouchNetUtil.is5G(wifiInfo.getFrequency()));
+            result.putString("ssid", ssid);
+            result.putString("bssid", wifiInfo.getBSSID());
+            result.putString("state", "Connected");
+            successCallback.invoke(result);
+        } catch (Exception e) {
+            Log.e(TAG, "unexpected JSON exception", e);
+        }
     }
 }
