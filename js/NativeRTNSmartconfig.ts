@@ -4,11 +4,8 @@ export interface Spec extends TurboModule {
   add(a: number, b: number): Promise<number>;
 
   checkLocation(
-      // successCallback:
-      //               // (success: string) =>
-      //                   any, failCallback:
-      // // (error: string) =>
-      //     any
+      successCallback: (success: string) => void,
+      failCallback: (error: string) => void
   ): void;
 
   // getConnectedInfo(successCallback: (result: {
