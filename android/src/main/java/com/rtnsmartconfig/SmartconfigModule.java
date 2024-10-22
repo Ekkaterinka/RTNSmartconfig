@@ -26,20 +26,28 @@ import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
 
 import com.espressif.iot.esptouch.util.TouchNetUtil;
+import com.espressif.iot.esptouch.EsptouchTask;
+import com.espressif.iot.esptouch.IEsptouchListener;
+import com.espressif.iot.esptouch.IEsptouchResult;
+import com.espressif.iot.esptouch.IEsptouchTask;
 
 import java.net.InetAddress;
+import java.util.List;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 import com.rtnsmartconfig.NativeRTNSmartconfigSpec;
 
-public class SmartconfigModule extends NativeRTNSmartconfigSpec implements PermissionListener{
+public class SmartconfigModule extends NativeRTNSmartconfigSpec implements PermissionListener {
     private final ReactApplicationContext context;
     public static String NAME = "RTNSmartconfig";
     String TAG = "wifi";
     private final SparseArray<Callback> mCallbacks;
     Callback mSuccessCallback;
+    Callback espSuccessCallback;
     Callback mErrorCallback;
+
+    IEsptouchTask mEsptouchTask;
 
     private PermissionListener permissionListener;
     private static final int REQUEST_LOCATION = 1503;
@@ -64,7 +72,7 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     }
 
     public void isConnected() {
-        LocationManager mLocationManager= (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        LocationManager mLocationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         boolean gps = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
         boolean network = mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
 
@@ -81,9 +89,10 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         String messagePermission = "У приложения нет доступа к геопозиции.\n" + "Разрешите доступ к Вашей геопозиции в настройках устройства.";
         DialogInterface.OnClickListener onCancelListener = (dialog, which) -> {
             alertDialog = null;
-            mErrorCallback.invoke("NOT_GRANTED");};
+            mErrorCallback.invoke("NOT_GRANTED");
+        };
         DialogInterface.OnClickListener onOkListener = (dialog, which) -> {
-            activity.requestPermissions(new String[] {permission}, REQUEST_LOCATION, this);
+            activity.requestPermissions(new String[]{permission}, REQUEST_LOCATION, this);
         };
 
         if (activity.shouldShowRequestPermissionRationale(permission)) {
@@ -96,7 +105,7 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
                 alertDialog = builder.show();
             }
         } else {
-            activity.requestPermissions(new String[] {permission}, REQUEST_LOCATION, this);
+            activity.requestPermissions(new String[]{permission}, REQUEST_LOCATION, this);
         }
     }
 
@@ -122,9 +131,9 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         Context context = getReactApplicationContext().getBaseContext();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             if (ContextCompat.checkSelfPermission(context, permission)
-                    != PackageManager.PERMISSION_GRANTED ) {
+                    != PackageManager.PERMISSION_GRANTED) {
                 Log.e(TAG, "NOT GRANTED");
-                 requestLocationPermission();
+                requestLocationPermission();
             } else {
                 isConnected();
                 Log.e(TAG, "GRANTED");
@@ -184,5 +193,66 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         } catch (Exception e) {
             Log.e(TAG, "unexpected JSON exception", e);
         }
+    }
+
+    public static byte[] strToByteArray(String str) {
+        if (str == null) {
+            return null;
+        }
+        byte[] byteArray = str.getBytes();
+        return byteArray;
+    }
+
+    private IEsptouchListener myListener = new IEsptouchListener() {
+        @Override
+        public void onEsptouchResultAdded(final IEsptouchResult result) {
+            final WritableMap device = new WritableNativeMap();
+            if (result.isSuc()) {
+                device.putString("ip", result.getInetAddress().getHostAddress());
+                espSuccessCallback.invoke(device);
+                Log.e(TAG, "onEsptouchResultAdded");
+            }
+        }
+    };
+
+    public void startEspTouch(String apSsid,
+                              String apBssid,
+                              String apPassword,
+                              Callback success_callback,
+                              Callback fail_callback) {
+        final Object mLock = new Object();
+        int taskResultCount;
+        Activity activity = getCurrentActivity();
+        espSuccessCallback = success_callback;
+
+        synchronized (mLock) {
+            final byte[] mApSsid = strToByteArray(apSsid);
+            final byte[] mApBssid = {0, 0, 0, 0, 0, 0};
+            final byte[] mApPassword = strToByteArray(apPassword);
+            final byte[] deviceCountData = strToByteArray("1");
+            final byte[] broadcastData = strToByteArray("1");
+            Log.e(TAG, "startEspTouch");
+            taskResultCount = deviceCountData.length == 0 ? -1 : Integer.parseInt(new String(deviceCountData));
+            mEsptouchTask = new EsptouchTask(mApSsid, mApBssid, mApPassword, context);
+            mEsptouchTask.setPackageBroadcast(broadcastData[0] == 1);
+            mEsptouchTask.setEsptouchListener(myListener);
+        }
+        List<IEsptouchResult> resultList = mEsptouchTask.executeForResults(taskResultCount);
+        IEsptouchResult firstResult = resultList.get(0);
+        if (!firstResult.isCancelled()) {
+            int count = 0;
+            final int maxDisplayCount = taskResultCount;
+            if (!firstResult.isSuc()) {
+                fail_callback.invoke("No Device Found");
+            }
+        }
+    }
+
+    public void stopEspTouch(Callback success_callback,
+                             Callback fail_callback) {
+        if (mEsptouchTask != null) {
+            mEsptouchTask.interrupt();
+        }
+        success_callback.invoke("OK");
     }
 }
