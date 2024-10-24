@@ -9,7 +9,7 @@ RCT_EXPORT_MODULE()
     resolve(result);
 }
 
-- (void) getConnectedInfo:(CDVInvokedUrlCommand *)command{
+- (void) getConnectedInfo:(RCTResponseSenderBlock) successCallback errorCallback:(RCTResponseErrorBlock)errorCallback {
     NetworkStatus networkStatus = [[ESPReachability reachabilityForInternetConnection] currentReachabilityStatus];
     if (networkStatus == ReachableViaWiFi) {
         NSDictionary *wifiDic = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -17,21 +17,17 @@ RCT_EXPORT_MODULE()
                                  ESPTools.getCurrentBSSID,@"bssid",
                                  @"Connected", @"state",
                                  nil];
-
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:wifiDic];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-
+        
+        successCallback(@[[NSNull null],wifiDic]);
     } else {
         NSDictionary *wifiDic = @{
             @"state":@"NotConnected"
         };
-
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:wifiDic];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        successCallback(@[wifiDic,[NSNull null]]);
     }
 }
 
-- (void) checkLocation:(RCTResponseSenderBlock) successCallback (RCTResponseErrorBlock) errorCallback{
+- (void) checkLocation:(RCTResponseSenderBlock) successCallback errorCallback:(RCTResponseErrorBlock)errorCallback {
 
     NSString* message = @"";
 
@@ -63,8 +59,7 @@ RCT_EXPORT_MODULE()
                                                                      handler:^(UIAlertAction* action)
                                                {
                     NSString *message = [NSString stringWithFormat:@"NOT_GRANTED"];
-                    errorCallback = [message];
-
+                    successCallback(@[message,[NSNull null]]);
                 }];
 
                 [alert addAction:cancelAction];
@@ -79,17 +74,30 @@ RCT_EXPORT_MODULE()
             case kCLAuthorizationStatusNotDetermined: {
                 [cllocation requestWhenInUseAuthorization];
                 message = [NSString stringWithFormat:@"NOT_DETERMINATED"];
-                errorCallback = [message];
+                successCallback(@[message,[NSNull null]]);
                 break;}
             case kCLAuthorizationStatusAuthorizedAlways:
             case kCLAuthorizationStatusAuthorizedWhenInUse:{
                 message = [NSString stringWithFormat:@"GRANTED"];
-                successCallback = [message];
+                successCallback(@[[NSNull null],message]);
                 break;}
             default:
                 break;
         }
     }
+}
+
+- (void)startEspTouch:(NSString *)apSsid
+              apBssid:(NSString *)apBssid
+           apPassword:(NSString *)apPassword
+     success_callback:(RCTResponseSenderBlock)success_callback
+        fail_callback:(RCTResponseSenderBlock)fail_callback {
+    
+}
+
+- (void)stopEspTouch:(RCTResponseSenderBlock)successCallback
+        failCallback:(RCTResponseSenderBlock)failCallback {
+    
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
