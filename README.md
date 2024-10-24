@@ -1,5 +1,5 @@
 cd light_zont
-yarn add ../RTNCalculator
+yarn add ../RTNSmartconfig
 cd ..
 node light_zont/node_modules/react-native/scripts/generate-codegen-artifacts.js \
   --targetPlatform ios \
