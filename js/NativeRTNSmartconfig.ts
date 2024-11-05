@@ -1,8 +1,6 @@
 import {TurboModule, TurboModuleRegistry} from "react-native";
 
 export interface Spec extends TurboModule {
-    add(a: number, b: number): Promise<number>;
-
     checkLocation(
         successCallback: (success: string) => void,
         failCallback: (error: string) => void
@@ -19,14 +17,9 @@ export interface Spec extends TurboModule {
     startEspTouch(
         apSsid: string,
         apBssid: string,
-        apPassword: string,
-        success_callback: (success: { bssid: string; ip: string }) => void,
-        fail_callback: (error: string) => void): void;
+        apPassword: string): Promise<string>;
 
-    stopEspTouch(
-        successCallback: (success: string) => void,
-        failCallback: (error: string) => void
-    ): void;
+    stopEspTouch(): Promise<string>;
 }
 
 export default TurboModuleRegistry.get<Spec>("RTNSmartconfig") as Spec | null;

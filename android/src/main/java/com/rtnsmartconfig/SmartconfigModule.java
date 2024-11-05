@@ -33,6 +33,7 @@ import com.espressif.iot.esptouch.IEsptouchTask;
 
 import java.net.InetAddress;
 import java.util.List;
+import java.lang.Thread;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,12 +45,11 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     String TAG = "wifi";
     private final SparseArray<Callback> mCallbacks;
     Callback mSuccessCallback;
-    Callback espSuccessCallback;
+    Promise espPromise;
     Callback mErrorCallback;
 
     IEsptouchTask mEsptouchTask;
 
-    private PermissionListener permissionListener;
     private static final int REQUEST_LOCATION = 1503;
     private final String permission = Manifest.permission.ACCESS_FINE_LOCATION;
     AlertDialog alertDialog = null;
@@ -64,11 +64,6 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     @NonNull
     public String getName() {
         return NAME;
-    }
-
-    @Override
-    public void add(double a, double b, Promise promise) {
-        promise.resolve(a + b);
     }
 
     public void isConnected() {
@@ -208,8 +203,8 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         public void onEsptouchResultAdded(final IEsptouchResult result) {
             final WritableMap device = new WritableNativeMap();
             if (result.isSuc()) {
-                device.putString("ip", result.getInetAddress().getHostAddress());
-                espSuccessCallback.invoke(device);
+                device.putString("Bssid", result.getBssid());
+                espPromise.resolve(device);
                 Log.e(TAG, "onEsptouchResultAdded");
             }
         }
@@ -217,13 +212,11 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
 
     public void startEspTouch(String apSsid,
                               String apBssid,
-                              String apPassword,
-                              Callback success_callback,
-                              Callback fail_callback) {
+                              String apPassword, Promise promise) {
         final Object mLock = new Object();
         int taskResultCount;
         Activity activity = getCurrentActivity();
-        espSuccessCallback = success_callback;
+        espPromise = promise;
 
         synchronized (mLock) {
             final byte[] mApSsid = strToByteArray(apSsid);
@@ -231,28 +224,30 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
             final byte[] mApPassword = strToByteArray(apPassword);
             final byte[] deviceCountData = strToByteArray("1");
             final byte[] broadcastData = strToByteArray("1");
-            Log.e(TAG, "startEspTouch");
             taskResultCount = deviceCountData.length == 0 ? -1 : Integer.parseInt(new String(deviceCountData));
             mEsptouchTask = new EsptouchTask(mApSsid, mApBssid, mApPassword, context);
             mEsptouchTask.setPackageBroadcast(broadcastData[0] == 1);
             mEsptouchTask.setEsptouchListener(myListener);
         }
-        List<IEsptouchResult> resultList = mEsptouchTask.executeForResults(taskResultCount);
-        IEsptouchResult firstResult = resultList.get(0);
-        if (!firstResult.isCancelled()) {
-            int count = 0;
-            final int maxDisplayCount = taskResultCount;
-            if (!firstResult.isSuc()) {
-                fail_callback.invoke("No Device Found");
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                List<IEsptouchResult> resultList = mEsptouchTask.executeForResults(taskResultCount);
+                IEsptouchResult firstResult = resultList.get(0);
+                if (!firstResult.isCancelled()) {
+                    if (!firstResult.isSuc()) {
+                        espPromise.reject("No Device Found");
+                    }
+                }
             }
-        }
+        });
+        thread.start();
     }
 
-    public void stopEspTouch(Callback success_callback,
-                             Callback fail_callback) {
+    public void stopEspTouch(Promise promise) {
         if (mEsptouchTask != null) {
-            mEsptouchTask.interrupt();
+                    mEsptouchTask.interrupt();
         }
-        success_callback.invoke("OK");
+        promise.resolve("OK");
     }
 }
