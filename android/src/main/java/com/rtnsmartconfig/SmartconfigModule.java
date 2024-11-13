@@ -201,10 +201,8 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     private IEsptouchListener myListener = new IEsptouchListener() {
         @Override
         public void onEsptouchResultAdded(final IEsptouchResult result) {
-            final WritableMap device = new WritableNativeMap();
             if (result.isSuc()) {
-                device.putString("Bssid", result.getBssid());
-                espPromise.resolve(device);
+                espPromise.resolve(result.getBssid());
                 Log.e(TAG, "onEsptouchResultAdded");
             }
         }
