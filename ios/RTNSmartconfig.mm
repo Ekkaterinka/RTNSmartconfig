@@ -4,31 +4,7 @@
 
 RCT_EXPORT_MODULE()
 
-- (void)add:(double)a b:(double)b resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
-    NSNumber *result = [[NSNumber alloc] initWithInteger:a+b];
-    resolve(result);
-}
-
-- (void) getConnectedInfo:(RCTResponseSenderBlock) successCallback errorCallback:(RCTResponseErrorBlock)errorCallback {
-    NetworkStatus networkStatus = [[ESPReachability reachabilityForInternetConnection] currentReachabilityStatus];
-    if (networkStatus == ReachableViaWiFi) {
-        NSDictionary *wifiDic = [NSDictionary dictionaryWithObjectsAndKeys:
-                                 ESPTools.getCurrentWiFiSsid, @"ssid",
-                                 ESPTools.getCurrentBSSID,@"bssid",
-                                 @"Connected", @"state",
-                                 nil];
-        
-        successCallback(@[[NSNull null],wifiDic]);
-    } else {
-        NSDictionary *wifiDic = @{
-            @"state":@"NotConnected"
-        };
-        successCallback(@[wifiDic,[NSNull null]]);
-    }
-}
-
-- (void) checkLocation:(RCTResponseSenderBlock) successCallback errorCallback:(RCTResponseErrorBlock)errorCallback {
-
+- (void)checkLocation: (RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
     NSString* message = @"";
 
     if (@available(iOS 13.0, *)) {
@@ -59,7 +35,7 @@ RCT_EXPORT_MODULE()
                                                                      handler:^(UIAlertAction* action)
                                                {
                     NSString *message = [NSString stringWithFormat:@"NOT_GRANTED"];
-                    successCallback(@[message,[NSNull null]]);
+                    reject(@"checkLocation",@"NOT_GRANTED", nil);
                 }];
 
                 [alert addAction:cancelAction];
@@ -74,12 +50,12 @@ RCT_EXPORT_MODULE()
             case kCLAuthorizationStatusNotDetermined: {
                 [cllocation requestWhenInUseAuthorization];
                 message = [NSString stringWithFormat:@"NOT_DETERMINATED"];
-                successCallback(@[message,[NSNull null]]);
+                reject(@"checkLocation",@"NOT_DETERMINATED", nil);
                 break;}
             case kCLAuthorizationStatusAuthorizedAlways:
             case kCLAuthorizationStatusAuthorizedWhenInUse:{
                 message = [NSString stringWithFormat:@"GRANTED"];
-                successCallback(@[[NSNull null],message]);
+                resolve(message);
                 break;}
             default:
                 break;
@@ -87,17 +63,30 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)startEspTouch:(NSString *)apSsid
-              apBssid:(NSString *)apBssid
-           apPassword:(NSString *)apPassword
-     success_callback:(RCTResponseSenderBlock)success_callback
-        fail_callback:(RCTResponseSenderBlock)fail_callback {
-    
+- (void)getConnectedInfo:(RCTResponseSenderBlock)successCallback failCallback:(RCTResponseSenderBlock)failCallback {
+    NetworkStatus networkStatus = [[ESPReachability reachabilityForInternetConnection] currentReachabilityStatus];
+    if (networkStatus == ReachableViaWiFi) {
+        NSDictionary *wifiDic = [NSDictionary dictionaryWithObjectsAndKeys:
+                                 ESPTools.getCurrentWiFiSsid, @"ssid",
+                                 ESPTools.getCurrentBSSID,@"bssid",
+                                 @"Connected", @"state",
+                                 nil];
+
+        successCallback(@[[NSNull null],wifiDic]);
+    } else {
+        NSDictionary *wifiDic = @{
+            @"state":@"NotConnected"
+        };
+        successCallback(@[wifiDic,[NSNull null]]);
+    }
 }
 
-- (void)stopEspTouch:(RCTResponseSenderBlock)successCallback
-        failCallback:(RCTResponseSenderBlock)failCallback {
-    
+- (void)startEspTouch:(NSString *)apSsid apBssid:(NSString *)apBssid apPassword:(NSString *)apPassword resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+
+}
+
+- (void)stopEspTouch:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
