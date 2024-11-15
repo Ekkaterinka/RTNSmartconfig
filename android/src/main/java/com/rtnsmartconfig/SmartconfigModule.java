@@ -43,10 +43,8 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     private final ReactApplicationContext context;
     public static String NAME = "RTNSmartconfig";
     String TAG = "wifi";
-    private final SparseArray<Callback> mCallbacks;
-    Callback mSuccessCallback;
     Promise espPromise;
-    Callback mErrorCallback;
+    Promise checkPromise;
 
     IEsptouchTask mEsptouchTask;
 
@@ -57,7 +55,6 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     SmartconfigModule(ReactApplicationContext context) {
         super(context);
         this.context = context;
-        mCallbacks = new SparseArray<Callback>();
     }
 
     @Override
@@ -72,19 +69,18 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         boolean network = mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
 
         if (gps || network) {
-            mSuccessCallback.invoke("isConnected");
+            checkPromise.resolve("isConnected");
         } else {
-            mErrorCallback.invoke("NotConnected");
+            checkPromise.reject("NotConnected");
         }
     }
 
     public void requestLocationPermission() {
-        Log.e(TAG, "requestLocationPermission");
         PermissionAwareActivity activity = getPermissionAwareActivity();
         String messagePermission = "У приложения нет доступа к геопозиции.\n" + "Разрешите доступ к Вашей геопозиции в настройках устройства.";
         DialogInterface.OnClickListener onCancelListener = (dialog, which) -> {
             alertDialog = null;
-            mErrorCallback.invoke("NOT_GRANTED");
+            checkPromise.reject("NOT_GRANTED");
         };
         DialogInterface.OnClickListener onOkListener = (dialog, which) -> {
             activity.requestPermissions(new String[]{permission}, REQUEST_LOCATION, this);
@@ -107,35 +103,30 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
     @Override
     public boolean onRequestPermissionsResult(
             int requestCode, String[] permissions, int[] grantResults) {
-        Log.e("TAG", "onRequestPermissionsResult");
         if (requestCode == REQUEST_LOCATION) {
             if (grantResults.length > 0 &&
                     grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 isConnected();
             } else {
-                mErrorCallback.invoke("NOT_GRANTED");
+                checkPromise.reject("NOT_GRANTED");
             }
         }
         return true;
     }
 
-
-    public void checkLocation(Callback successCallback, Callback errorCallback) {
-        mSuccessCallback = successCallback;
-        mErrorCallback = errorCallback;
+    public void checkLocation(Promise promise) {
+        checkPromise = promise;
         Context context = getReactApplicationContext().getBaseContext();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             if (ContextCompat.checkSelfPermission(context, permission)
                     != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "NOT GRANTED");
                 requestLocationPermission();
             } else {
                 isConnected();
-                Log.e(TAG, "GRANTED");
             }
             return;
         }
-        mSuccessCallback.invoke("isConnected");
+        promise.resolve("isConnected");
     }
 
     private PermissionAwareActivity getPermissionAwareActivity() {

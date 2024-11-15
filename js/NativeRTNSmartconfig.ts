@@ -1,10 +1,7 @@
 import {TurboModule, TurboModuleRegistry} from "react-native";
 
 export interface Spec extends TurboModule {
-    checkLocation(
-        successCallback: (success: string) => void,
-        failCallback: (error: string) => void
-    ): void;
+    checkLocation(): Promise<string>;
 
     getConnectedInfo(successCallback: (result: {
         ip: string,
