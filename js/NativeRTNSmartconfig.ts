@@ -3,13 +3,13 @@ import {TurboModule, TurboModuleRegistry} from "react-native";
 export interface Spec extends TurboModule {
     checkLocation(): Promise<string>;
 
-    getConnectedInfo(successCallback: (result: {
-        ip: string,
-        is5G: boolean,
+    getConnectedInfo(): Promise<{
         ssid: string,
         bssid: string,
-        state: string
-    }) => void, failCallback: (error: string) => void): void;
+        state: string,
+           ip?: string,
+        is5G?: boolean,
+    }>;
 
     startEspTouch(
         apSsid: string,

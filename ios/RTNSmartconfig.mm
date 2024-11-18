@@ -2,11 +2,9 @@
 
 @implementation RTNSmartconfig
 
-RCT_EXPORT_MODULE()
 
-- (void)checkLocation: (RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
-    NSString* message = @"";
-
+RCT_EXPORT_METHOD(checkLocation: (RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
     if (@available(iOS 13.0, *)) {
         CLLocationManager* cllocation = [[CLLocationManager alloc] init];
 
@@ -34,7 +32,6 @@ RCT_EXPORT_MODULE()
                                                                        style:UIAlertActionStyleCancel
                                                                      handler:^(UIAlertAction* action)
                                                {
-                    NSString *message = [NSString stringWithFormat:@"NOT_GRANTED"];
                     reject(@"checkLocation",@"NOT_GRANTED", nil);
                 }];
 
@@ -44,46 +41,94 @@ RCT_EXPORT_MODULE()
                 [NSTimer scheduledTimerWithTimeInterval:5 repeats:NO block:^(NSTimer * _Nonnull timer) {
                     [rootController dismissViewControllerAnimated:YES completion:nil];
                 }];
-
-
                 break;}
             case kCLAuthorizationStatusNotDetermined: {
                 [cllocation requestWhenInUseAuthorization];
-                message = [NSString stringWithFormat:@"NOT_DETERMINATED"];
                 reject(@"checkLocation",@"NOT_DETERMINATED", nil);
                 break;}
             case kCLAuthorizationStatusAuthorizedAlways:
             case kCLAuthorizationStatusAuthorizedWhenInUse:{
-                message = [NSString stringWithFormat:@"GRANTED"];
-                resolve(message);
+                resolve(@"GRANTED");
                 break;}
             default:
                 break;
         }
     }
 }
-
-- (void)getConnectedInfo:(RCTResponseSenderBlock)successCallback failCallback:(RCTResponseSenderBlock)failCallback {
+RCT_EXPORT_METHOD(getConnectedInfo: (RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+ {
     NetworkStatus networkStatus = [[ESPReachability reachabilityForInternetConnection] currentReachabilityStatus];
     if (networkStatus == ReachableViaWiFi) {
-        NSDictionary *wifiDic = [NSDictionary dictionaryWithObjectsAndKeys:
+
+            NSDictionary *wifiDic = [NSDictionary dictionaryWithObjectsAndKeys:
                                  ESPTools.getCurrentWiFiSsid, @"ssid",
                                  ESPTools.getCurrentBSSID,@"bssid",
                                  @"Connected", @"state",
                                  nil];
 
-        successCallback(@[[NSNull null],wifiDic]);
+        resolve(wifiDic);
     } else {
-        NSDictionary *wifiDic = @{
-            @"state":@"NotConnected"
-        };
-        successCallback(@[wifiDic,[NSNull null]]);
+        reject(@"getConnectedInfo",@"NotConnected", nil);
     }
 }
 
-- (void)startEspTouch:(NSString *)apSsid apBssid:(NSString *)apBssid apPassword:(NSString *)apPassword resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(startEspTouch: (NSString *)apSsid
+apBssid:(NSString *)apBssid
+apPassword:(NSString *)apPassword
+resolve:(RCTPromiseResolveBlock)resolve
+reject:(RCTPromiseRejectBlock)reject)
+{dispatch_queue_t  queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 
+ dispatch_async(queue, ^{
+  NSLog(@"startEspTouchstartEspTouch");
+
+
+        [self._condition lock];
+        int taskCount = 1;
+        NSString *broadcastData = @"1";
+        BOOL isbroadcastData = true;
+        if([broadcastData compare:@"1"]==NSOrderedSame){
+            isbroadcastData=false;
+        }
+
+        NSLog(@"ssid: %@, bssid: %@, apPwd: %@", apSsid, apBssid, apPassword);
+
+        self._esptouchTask =
+        [[ESPTouchTask alloc]initWithApSsid:apSsid andApBssid:apBssid andApPwd:apPassword];
+        NSObject<ESPTouchDelegate> *esptouchDelegate=[[NSObject<ESPTouchDelegate> alloc]init];
+        [self._esptouchTask setEsptouchDelegate:esptouchDelegate];
+        [self._esptouchTask setPackageBroadcast:YES]; // if YES send broadcast packets, else send multicast packets
+        [self._condition unlock];
+        NSArray * esptouchResultArray = [self._esptouchTask executeForResults:taskCount];
+
+        dispatch_async(queue, ^{
+            // show the result to the user in UI Main Thread
+            dispatch_async(dispatch_get_main_queue(), ^{
+
+
+                ESPTouchResult *firstResult = [esptouchResultArray objectAtIndex:0];
+                // check whether the task is cancelled and no results received
+                if (!firstResult.isCancelled)
+                {
+                    if ([firstResult isSuc])
+                    {
+                        ESPTouchResult *resultInArray = [esptouchResultArray objectAtIndex:0];
+                        NSString *ipaddr = [ESP_NetUtil descriptionInetAddr4ByData:resultInArray.ipAddrData];
+                        NSDictionary *dic =@{@"bssid":resultInArray.bssid,@"ip":ipaddr};
+                        resolve(dic);
+                    }
+                    else
+                    {
+                    reject(@"startEspTouch",@"Esptouch fail", nil);
+                    }
+                }
+
+            });
+        });
+    });
 }
+
+RCT_EXPORT_MODULE()
 
 - (void)stopEspTouch:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
 
