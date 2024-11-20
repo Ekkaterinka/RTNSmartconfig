@@ -10,7 +10,7 @@
 @interface RTNSmartconfig : NSObject <NativeRTNSmartconfigSpec>
 @property (nonatomic, strong) NSCondition *_condition;
 @property (atomic, strong) ESPTouchTask *_esptouchTask;
-@property (nonatomic, weak) id <ESPTouchDelegate> commandDelegate;
+
 
 @end
 

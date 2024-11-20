@@ -149,12 +149,12 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
         try {
             if (!TouchNetUtil.isWifiConnected(wifiInfo)) {
-                result.putString("state", "NotConnected");
+                result.putString("message", "NotConnected");
                 errorCallback.invoke(result);
                 return;
             }
             if (!wifiInfo.getSupplicantState().equals(SupplicantState.COMPLETED)) {
-                result.putString("state", "Connecting");
+                result.putString("message", "Connecting");
                 errorCallback.invoke(result);
                 return;
             }
