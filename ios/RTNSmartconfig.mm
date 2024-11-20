@@ -136,8 +136,7 @@ reject:(RCTPromiseRejectBlock)reject)
                     {
                         ESPTouchResult *resultInArray = [esptouchResultArray objectAtIndex:0];
                         NSString *ipaddr = [ESP_NetUtil descriptionInetAddr4ByData:resultInArray.ipAddrData];
-                        NSDictionary *dic =@(resultInArray.bssid);
-                        resolve(dic);
+                        resolve(resultInArray.bssid);
                     }
                     else
                     {
