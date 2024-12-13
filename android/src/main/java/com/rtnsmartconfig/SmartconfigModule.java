@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.WritableNativeMap;
@@ -142,20 +141,18 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
         return (PermissionAwareActivity) activity;
     }
 
-    public void getConnectedInfo(Callback successCallback, Callback errorCallback) {
+    public void getConnectedInfo(Promise promise) {
         final WritableMap result = new WritableNativeMap();
 
         WifiManager mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
         try {
             if (!TouchNetUtil.isWifiConnected(wifiInfo)) {
-                result.putString("message", "NotConnected");
-                errorCallback.invoke(result);
+                promise.reject("NotConnected");
                 return;
             }
             if (!wifiInfo.getSupplicantState().equals(SupplicantState.COMPLETED)) {
-                result.putString("message", "Connecting");
-                errorCallback.invoke(result);
+                promise.reject("Connecting");
                 return;
             }
             String ssid = TouchNetUtil.getSsidString(wifiInfo);
@@ -175,7 +172,7 @@ public class SmartconfigModule extends NativeRTNSmartconfigSpec implements Permi
             result.putString("ssid", ssid);
             result.putString("bssid", wifiInfo.getBSSID());
             result.putString("state", "Connected");
-            successCallback.invoke(result);
+            promise.resolve(result);
         } catch (Exception e) {
             Log.e(TAG, "unexpected JSON exception", e);
         }
